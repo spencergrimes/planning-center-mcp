@@ -17,6 +17,8 @@
     "db:seed": "tsx prisma/seed.ts",
     "test": "jest",
     "test:watch": "jest --watch",
+    "test:setup": "./scripts/test-setup.sh",
+    "test:teardown": "docker-compose -f docker-compose.test.yml down",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit"
   },

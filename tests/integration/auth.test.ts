@@ -47,7 +47,7 @@ describe('Authentication API', () => {
 
   test('POST /api/v1/auth/login - should login existing user', async () => {
     // Create test user first
-    await createTestUser(orgId);
+    await createTestUser(orgId, 'ADMIN', 'test@example.com');
 
     const response = await app.inject({
       method: 'POST',
@@ -67,7 +67,7 @@ describe('Authentication API', () => {
   });
 
   test('POST /api/v1/auth/login - should fail with invalid credentials', async () => {
-    await createTestUser(orgId);
+    await createTestUser(orgId, 'ADMIN', 'test@example.com');
 
     const response = await app.inject({
       method: 'POST',

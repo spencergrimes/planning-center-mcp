@@ -232,11 +232,49 @@ ws.onmessage = (event) => {
 
 ## 🧪 Testing
 
+### Local Testing Setup
+
+**Option 1: Using Docker (Recommended)**
+
+```bash
+# Start test database and Redis with Docker
+docker run -d --name postgres-test \
+  -p 5432:5432 \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=password \
+  -e POSTGRES_DB=planning_center_test \
+  postgres:15
+
+docker run -d --name redis-test \
+  -p 6379:6379 \
+  redis:7
+
+# Setup test environment
+cp .env.test .env.test.local
+npm install
+
+# Generate Prisma client and run migrations
+npx prisma generate
+npx prisma migrate deploy --schema=./prisma/schema.prisma
+```
+
+**Option 2: Using Docker Compose (Easiest)**
+
+```bash
+# One-command setup with automated script
+npm run test:setup
+
+# Or manually:
+docker-compose -f docker-compose.test.yml up -d
+npx prisma generate
+npx prisma migrate deploy
+```
+
 ### Run Tests
 
 ```bash
-# Setup test database
-createdb planning_center_test
+# Quick start: Setup and run tests
+npm run test:setup && npm test
 
 # Run all tests
 npm test
@@ -247,18 +285,52 @@ npm test -- --coverage
 # Watch mode
 npm run test:watch
 
+# Run specific test file
+npm test -- tests/integration/auth.test.ts
+
 # Type checking
 npm run typecheck
 
 # Linting
 npm run lint
+
+# Cleanup test environment
+npm run test:teardown
 ```
+
+### CI/CD Testing
+
+The GitHub Actions workflow automatically:
+- ✅ Starts PostgreSQL and Redis services
+- ✅ Runs database migrations
+- ✅ Executes all tests with proper environment
+- ✅ Generates coverage reports
 
 ### Test Structure
 
 - `tests/integration/` - Integration tests for API endpoints
 - `tests/helpers/` - Test utilities and setup
-- `tests/setup.ts` - Jest configuration
+- `.env.test` - Test environment configuration
+
+### Troubleshooting Tests
+
+**Database Connection Issues:**
+```bash
+# Check if PostgreSQL is running
+docker ps | grep postgres
+
+# View database logs
+docker logs postgres-test
+
+# Reset test database
+docker rm -f postgres-test redis-test
+# Then restart with setup commands above
+```
+
+**Test Environment Variables:**
+- Tests use `.env.test` for configuration
+- GitHub Actions provides its own environment setup
+- Local tests need PostgreSQL on port 5432
 
 ## 🚢 Deployment
 

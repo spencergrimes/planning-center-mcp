@@ -57,7 +57,11 @@ export async function build(): Promise<FastifyInstance> {
   });
 
   await app.register(jwt, {
-    secret: process.env.JWT_SECRET || 'test-jwt-secret'
+    secret: process.env.JWT_SECRET || 'test-jwt-secret',
+    cookie: {
+      cookieName: 'token',
+      signed: true
+    }
   });
 
   await app.register(websocket);

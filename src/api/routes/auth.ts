@@ -79,6 +79,7 @@ export async function authRoutes(fastify: FastifyInstance) {
       maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     });
 
+    reply.status(201);
     return {
       user: {
         id: result.user.id,

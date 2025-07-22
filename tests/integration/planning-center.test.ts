@@ -24,7 +24,7 @@ describe('Planning Center API', () => {
     orgId = org.id;
 
     // Create and login admin user
-    await createTestUser(orgId, 'ADMIN');
+    await createTestUser(orgId, 'ADMIN', 'test@example.com');
     const loginResponse = await app.inject({
       method: 'POST',
       url: '/api/v1/auth/login',
@@ -85,12 +85,12 @@ describe('Planning Center API', () => {
 
   test('DELETE /api/v1/planning-center/disconnect - should require admin role', async () => {
     // Create non-admin user
-    await createTestUser(orgId, 'LEADER');
+    await createTestUser(orgId, 'LEADER', 'leader@example.com');
     const leaderLogin = await app.inject({
       method: 'POST',
       url: '/api/v1/auth/login',
       payload: {
-        email: 'test@example.com',
+        email: 'leader@example.com',
         password: 'password123',
         organizationId: orgId
       }

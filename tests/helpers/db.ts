@@ -40,13 +40,14 @@ export async function createTestOrganization() {
   });
 }
 
-export async function createTestUser(organizationId: string, role = 'ADMIN') {
+export async function createTestUser(organizationId: string, role = 'ADMIN', email?: string) {
   const passwordHash = await bcrypt.hash('password123', 10);
+  const userEmail = email || `test-${Date.now()}-${Math.random().toString(36).substr(2, 9)}@example.com`;
   
   return await prisma.user.create({
     data: {
       organizationId,
-      email: 'test@example.com',
+      email: userEmail,
       passwordHash,
       firstName: 'Test',
       lastName: 'User',
