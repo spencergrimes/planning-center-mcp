@@ -19,6 +19,10 @@
     "test:watch": "jest --watch",
     "test:setup": "./scripts/test-setup.sh",
     "test:teardown": "docker-compose -f docker-compose.test.yml down",
+    "test:ci": "./scripts/local-test.sh",
+    "test:quick": "./scripts/quick-test.sh",
+    "test:syntax": "./scripts/syntax-check.sh",
+    "test:cleanup": "docker rm -f postgres-local-test redis-local-test || true",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit"
   },

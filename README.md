@@ -234,7 +234,27 @@ ws.onmessage = (event) => {
 
 ### Local Testing Setup
 
-**Option 1: Using Docker (Recommended)**
+**Option 1: Quick Syntax Check (No Docker Required)**
+
+```bash
+# Fast syntax, linting, and build check
+npm run test:syntax
+```
+
+**Option 2: Quick Database Test (Requires Docker)**
+
+```bash
+# Run auth tests with real database (mimics GitHub Actions)
+npm run test:quick
+
+# Or full CI pipeline
+npm run test:ci
+
+# Cleanup afterwards  
+npm run test:cleanup
+```
+
+**Option 3: Using Docker (Alternative)**
 
 ```bash
 # Start test database and Redis with Docker
@@ -331,6 +351,31 @@ docker rm -f postgres-test redis-test
 - Tests use `.env.test` for configuration
 - GitHub Actions provides its own environment setup
 - Local tests need PostgreSQL on port 5432
+
+### Advanced Local Testing Options
+
+**Option A: GitHub Actions Local Runner**
+```bash
+# Install act (runs GitHub Actions locally)
+./scripts/setup-local-runner.sh
+
+# Run GitHub Actions locally
+act -j test    # Run just the test job
+act           # Run all jobs
+```
+
+**Option B: VS Code Dev Container**
+1. Install [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
+2. Open project in VS Code
+3. Press `Cmd/Ctrl + Shift + P` → "Dev Containers: Reopen in Container"
+4. Full environment with PostgreSQL, Redis, and Node.js ready to go
+
+**Option C: Pre-commit Testing**
+```bash
+# Add to .git/hooks/pre-commit
+#!/bin/bash
+npm run test:ci
+```
 
 ## 🚢 Deployment
 

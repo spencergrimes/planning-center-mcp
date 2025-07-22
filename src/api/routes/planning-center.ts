@@ -15,11 +15,25 @@ export async function planningCenterRoutes(fastify: FastifyInstance) {
   // Helper function for inline authentication
   async function authenticateUser(request: any) {
     try {
-      // Use Fastify JWT's built-in authentication which handles signed cookies
-      await request.jwtVerify();
+      // Get token from signed cookie or authorization header
+      let token;
       
-      // The user info should now be in request.user from the JWT payload
-      const payload = request.user as any;
+      // Try to get from cookie first
+      if (request.cookies.token) {
+        token = request.cookies.token;
+      }
+      
+      // Fallback to authorization header
+      if (!token && request.headers.authorization) {
+        token = request.headers.authorization.replace('Bearer ', '');
+      }
+
+      if (!token) {
+        throw new AppError(401, 'Authentication required', 'AUTH_REQUIRED');
+      }
+
+      // Verify the JWT token
+      const payload = await fastify.jwt.verify(token) as any;
       const userId = payload.userId;
       const organizationId = payload.organizationId;
       
@@ -49,7 +63,10 @@ export async function planningCenterRoutes(fastify: FastifyInstance) {
 
       return request.user;
     } catch (error) {
-      throw new AppError(401, 'Authentication required', 'AUTH_REQUIRED');
+      if (error instanceof AppError) {
+        throw error;
+      }
+      throw new AppError(401, 'Invalid authentication', 'INVALID_AUTH');
     }
   }
 

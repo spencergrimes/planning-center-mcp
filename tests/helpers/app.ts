@@ -60,7 +60,7 @@ export async function build(): Promise<FastifyInstance> {
     secret: process.env.JWT_SECRET || 'test-jwt-secret',
     cookie: {
       cookieName: 'token',
-      signed: true
+      signed: false  // Disable signing for tests to simplify debugging
     }
   });
 

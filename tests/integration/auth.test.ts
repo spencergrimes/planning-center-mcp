@@ -98,15 +98,26 @@ describe('Authentication API', () => {
       }
     });
 
-    const cookies = loginResponse.headers['set-cookie'] as string[];
-    expect(cookies).toBeDefined();
-    expect(cookies.length).toBeGreaterThan(0);
+    const cookies = loginResponse.headers['set-cookie'];
+    
+    // Handle both string and array cases
+    let cookieString;
+    if (Array.isArray(cookies)) {
+      cookieString = cookies[0];
+    } else {
+      cookieString = cookies as string;
+    }
+    
+    expect(cookieString).toBeDefined();
+
+    // Extract just the cookie value part (before the first semicolon)
+    const cookieValue = cookieString.split(';')[0];
 
     const response = await app.inject({
       method: 'GET',
       url: '/api/v1/auth/me',
       headers: {
-        cookie: cookies[0]
+        cookie: cookieValue
       }
     });
 

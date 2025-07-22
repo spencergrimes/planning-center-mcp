@@ -156,11 +156,35 @@ export async function authRoutes(fastify: FastifyInstance) {
 
   // Get current user
   fastify.get('/auth/me', async (request, reply) => {
-    // Use Fastify JWT's built-in authentication
     try {
-      await request.jwtVerify();
+      // Get token from signed cookie or authorization header
+      let token;
       
-      const payload = request.user as any;
+      // Try to get from cookie first
+      if (request.cookies.token) {
+        token = request.cookies.token;
+      }
+      
+      // Fallback: manually parse cookie header if automated parsing failed
+      if (!token && request.headers.cookie) {
+        const cookieHeader = request.headers.cookie;
+        const tokenMatch = cookieHeader.match(/token=([^;]+)/);
+        if (tokenMatch) {
+          token = tokenMatch[1];
+        }
+      }
+      
+      // Fallback to authorization header
+      if (!token && request.headers.authorization) {
+        token = request.headers.authorization.replace('Bearer ', '');
+      }
+
+      if (!token) {
+        throw new AppError(401, 'Invalid authentication', 'INVALID_AUTH');
+      }
+
+      // Verify the JWT token
+      const payload = await fastify.jwt.verify(token) as any;
       const userId = payload.userId;
       const organizationId = payload.organizationId;
       
@@ -190,7 +214,10 @@ export async function authRoutes(fastify: FastifyInstance) {
         }
       };
     } catch (error) {
-      throw new AppError(401, 'Authentication required', 'AUTH_REQUIRED');
+      if (error instanceof AppError) {
+        throw error;
+      }
+      throw new AppError(401, 'Invalid authentication', 'INVALID_AUTH');
     }
   });
 
