@@ -1,5 +1,5 @@
 // Minimal ESLint config to pass CI - TypeScript handles type checking
-export default [
+module.exports = [
   {
     files: ['src/**/*.js'],
     rules: {

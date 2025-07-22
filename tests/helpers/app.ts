@@ -11,9 +11,21 @@ import { authPlugin } from '../../src/api/middleware/auth';
 import { apiRoutes } from '../../src/api/routes';
 import { MCPManager } from '../../src/mcp/manager';
 
+declare module 'fastify' {
+  interface FastifyInstance {
+    prisma: PrismaClient;
+    redis: Redis;
+    mcp: MCPManager;
+    authenticate: any;
+    authorize: any;
+  }
+}
+
 export async function build(): Promise<FastifyInstance> {
   const app = Fastify({
-    logger: createLogger()
+    logger: {
+      level: 'silent' // Disable logging in tests
+    }
   });
 
   // Use test database
@@ -55,8 +67,11 @@ export async function build(): Promise<FastifyInstance> {
   app.decorate('redis', redis);
   app.setErrorHandler(errorHandler);
 
-  // Auth middleware
+  // Auth middleware - MUST be registered before routes  
   await app.register(authPlugin);
+
+  // Wait for auth plugin to be fully registered
+  await app.after();
 
   // Initialize MCP Manager
   const mcpManager = new MCPManager(prisma, redis, app.log);
@@ -77,7 +92,13 @@ export async function build(): Promise<FastifyInstance> {
 }
 
 export async function cleanup(app: FastifyInstance) {
-  await app.close();
-  await app.prisma.$disconnect();
-  await app.redis.quit();
+  if (app) {
+    await app.close();
+    if (app.prisma) {
+      await app.prisma.$disconnect();
+    }
+    if (app.redis) {
+      await app.redis.quit();
+    }
+  }
 }

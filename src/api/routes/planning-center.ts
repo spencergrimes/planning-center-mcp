@@ -13,9 +13,39 @@ export async function planningCenterRoutes(fastify: FastifyInstance) {
   const encryption = new EncryptionService();
 
   // Connect Planning Center (Personal Access Token method)
-  fastify.post('/planning-center/connect', {
-    preHandler: [fastify.authenticate]
-  }, async (request) => {
+  fastify.post('/planning-center/connect', async (request) => {
+    // Inline authentication check
+    const token = request.cookies.token || 
+                 request.headers.authorization?.replace('Bearer ', '');
+
+    if (!token) {
+      throw new AppError(401, 'Authentication required', 'AUTH_REQUIRED');
+    }
+
+    const decoded = await fastify.jwt.verify(token) as any;
+    
+    // Verify user still exists and is active
+    const authUser = await fastify.prisma.user.findFirst({
+      where: {
+        id: decoded.userId,
+        organizationId: decoded.organizationId,
+        isActive: true
+      },
+      include: {
+        organization: true
+      }
+    });
+
+    if (!authUser || !authUser.organization.isActive) {
+      throw new AppError(401, 'Invalid authentication', 'INVALID_AUTH');
+    }
+
+    request.user = {
+      id: authUser.id,
+      organizationId: authUser.organizationId,
+      email: authUser.email,
+      role: authUser.role
+    };
     // Check if user is admin
     if ((request as any).user.role !== 'ADMIN') {
       throw new AppError(403, 'Insufficient permissions', 'FORBIDDEN');
@@ -62,9 +92,7 @@ export async function planningCenterRoutes(fastify: FastifyInstance) {
   });
 
   // Disconnect Planning Center
-  fastify.delete('/planning-center/disconnect', {
-    preHandler: [fastify.authenticate]
-  }, async (request) => {
+  fastify.delete('/planning-center/disconnect', async (request) => {
     // Check if user is admin
     if ((request as any).user.role !== 'ADMIN') {
       throw new AppError(403, 'Insufficient permissions', 'FORBIDDEN');
@@ -77,9 +105,7 @@ export async function planningCenterRoutes(fastify: FastifyInstance) {
   });
 
   // Get connection status
-  fastify.get('/planning-center/status', {
-    preHandler: [fastify.authenticate]
-  }, async (request) => {
+  fastify.get('/planning-center/status', async (request) => {
     const connection = await fastify.prisma.planningCenterConnection.findUnique({
       where: { organizationId: (request.user as any).organizationId }
     });
@@ -94,9 +120,7 @@ export async function planningCenterRoutes(fastify: FastifyInstance) {
   });
 
   // Manual sync
-  fastify.post('/planning-center/sync', {
-    preHandler: [fastify.authenticate]
-  }, async (request) => {
+  fastify.post('/planning-center/sync', async (request) => {
     // Check if user is admin or leader
     if (!['ADMIN', 'LEADER'].includes((request as any).user.role)) {
       throw new AppError(403, 'Insufficient permissions', 'FORBIDDEN');
@@ -111,9 +135,7 @@ export async function planningCenterRoutes(fastify: FastifyInstance) {
   });
 
   // Test Planning Center connection
-  fastify.post('/planning-center/test', {
-    preHandler: [fastify.authenticate]
-  }, async (request) => {
+  fastify.post('/planning-center/test', async (request) => {
     // Check if user is admin
     if ((request as any).user.role !== 'ADMIN') {
       throw new AppError(403, 'Insufficient permissions', 'FORBIDDEN');
