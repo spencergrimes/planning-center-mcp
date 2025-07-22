@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: planning_center_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Planning Center MCP Server
+  planning-center-mcp:
+    build: .
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/planning_center_dev
+      REDIS_URL: redis://redis:6379
+      # Add your production secrets here or use Docker secrets
+      JWT_SECRET: ${JWT_SECRET:-your-production-jwt-secret}
+      COOKIE_SECRET: ${COOKIE_SECRET:-your-production-cookie-secret-32-chars}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-your-production-encryption-key-32-chars}
+      PCO_CLIENT_ID: ${PCO_CLIENT_ID}
+      PCO_CLIENT_SECRET: ${PCO_CLIENT_SECRET}
+      PCO_REDIRECT_URI: ${PCO_REDIRECT_URI:-http://localhost:3001/api/v1/auth/planning-center/callback}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      MCP_SERVER_NAME: planning-center-mcp
+      MCP_SERVER_VERSION: 1.0.0
+      LOG_LEVEL: info
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => { process.exit(1) })"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  default:
+    name: planning-center-mcp

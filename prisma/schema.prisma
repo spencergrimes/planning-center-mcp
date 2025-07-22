@@ -1,0 +1,265 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  LEADER
+  MEMBER
+}
+
+enum ConnectionStatus {
+  ACTIVE
+  INACTIVE
+  ERROR
+}
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  subdomain String   @unique
+  settings  Json     @default("{}")
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  users                    User[]
+  planningCenterConnection PlanningCenterConnection?
+  people                   Person[]
+  teams                    Team[]
+  services                 Service[]
+  songs                    Song[]
+  auditLogs               AuditLog[]
+
+  @@index([subdomain])
+}
+
+model User {
+  id             String    @id @default(uuid())
+  organizationId String
+  email          String
+  passwordHash   String
+  firstName      String?
+  lastName       String?
+  role           UserRole  @default(MEMBER)
+  isActive       Boolean   @default(true)
+  lastLoginAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  sessions     Session[]
+  auditLogs    AuditLog[]
+
+  @@unique([organizationId, email])
+  @@index([email])
+  @@index([organizationId])
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+}
+
+model PlanningCenterConnection {
+  id                String           @id @default(uuid())
+  organizationId    String           @unique
+  pcoOrganizationId String
+  
+  // OAuth tokens (encrypted)
+  accessToken       String?
+  refreshToken      String?
+  tokenExpiresAt    DateTime?
+  
+  // Personal Access Token (encrypted) - alternative to OAuth
+  encryptedAppId    String?
+  encryptedSecret   String?
+  
+  connectionStatus  ConnectionStatus @default(ACTIVE)
+  lastSyncAt        DateTime?
+  lastErrorAt       DateTime?
+  lastErrorMessage  String?
+  
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+}
+
+// Planning Center cached data models
+model Person {
+  id             String   @id @default(uuid())
+  organizationId String
+  pcoId          String
+  firstName      String?
+  lastName       String?
+  email          String?
+  phoneNumber    String?
+  status         String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  syncedAt       DateTime
+
+  // Relations
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  teamMembers  TeamMember[]
+  schedules    Schedule[]
+
+  @@unique([organizationId, pcoId])
+  @@index([organizationId])
+  @@index([email])
+}
+
+model Team {
+  id             String   @id @default(uuid())
+  organizationId String
+  pcoId          String
+  name           String
+  position       String?
+  scheduleToText String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  syncedAt       DateTime
+
+  // Relations
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  teamMembers  TeamMember[]
+
+  @@unique([organizationId, pcoId])
+  @@index([organizationId])
+}
+
+model TeamMember {
+  id             String   @id @default(uuid())
+  teamId         String
+  personId       String
+  status         String?
+  createdAt      DateTime @default(now())
+
+  // Relations
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  person Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, personId])
+  @@index([teamId])
+  @@index([personId])
+}
+
+model Service {
+  id             String   @id @default(uuid())
+  organizationId String
+  pcoId          String
+  title          String
+  seriesTitle    String?
+  dateTime       DateTime
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  syncedAt       DateTime
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  schedules    Schedule[]
+  serviceSongs ServiceSong[]
+
+  @@unique([organizationId, pcoId])
+  @@index([organizationId])
+  @@index([dateTime])
+}
+
+model Schedule {
+  id             String   @id @default(uuid())
+  serviceId      String
+  personId       String
+  teamPosition   String
+  status         String   @default("U") // U=Unconfirmed, C=Confirmed, D=Declined
+  notifiedAt     DateTime?
+  respondedAt    DateTime?
+  createdAt      DateTime @default(now())
+
+  // Relations
+  service Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  person  Person  @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@unique([serviceId, personId, teamPosition])
+  @@index([serviceId])
+  @@index([personId])
+}
+
+model Song {
+  id             String   @id @default(uuid())
+  organizationId String
+  pcoId          String
+  title          String
+  author         String?
+  ccliNumber     String?
+  themes         String[] // Array of theme tags
+  lastUsedAt     DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  syncedAt       DateTime
+
+  // Relations
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  serviceSongs ServiceSong[]
+
+  @@unique([organizationId, pcoId])
+  @@index([organizationId])
+  @@index([themes])
+}
+
+model ServiceSong {
+  id        String   @id @default(uuid())
+  serviceId String
+  songId    String
+  order     Int
+  key       String?
+  createdAt DateTime @default(now())
+
+  // Relations
+  service Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  song    Song    @relation(fields: [songId], references: [id], onDelete: Cascade)
+
+  @@unique([serviceId, songId])
+  @@index([serviceId])
+  @@index([songId])
+}
+
+model AuditLog {
+  id             String   @id @default(uuid())
+  organizationId String
+  userId         String?
+  action         String
+  resource       String
+  resourceId     String?
+  details        Json?
+  ipAddress      String?
+  userAgent      String?
+  createdAt      DateTime @default(now())
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([userId])
+  @@index([createdAt])
+}

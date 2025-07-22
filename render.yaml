@@ -1,0 +1,58 @@
+services:
+  - type: web
+    name: planning-center-mcp
+    runtime: node
+    plan: starter
+    buildCommand: npm install && npm run build && npx prisma generate && npx prisma migrate deploy
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: planning-center-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: planning-center-redis
+          property: connectionString
+      - fromGroup: planning-center-secrets
+    healthCheckPath: /health
+    domains:
+      - planning-center-mcp.onrender.com
+
+  - type: redis
+    name: planning-center-redis
+    plan: starter
+    maxmemoryPolicy: allkeys-lru
+
+databases:
+  - name: planning-center-db
+    plan: starter
+    databaseName: planning_center_prod
+    user: planning_center_user
+
+envVarGroups:
+  - name: planning-center-secrets
+    envVars:
+      - key: JWT_SECRET
+        generateValue: true
+      - key: COOKIE_SECRET
+        generateValue: true
+      - key: ENCRYPTION_KEY
+        generateValue: true
+      - key: PCO_CLIENT_ID
+        sync: false
+      - key: PCO_CLIENT_SECRET
+        sync: false
+      - key: PCO_REDIRECT_URI
+        value: https://planning-center-mcp.onrender.com/api/v1/auth/planning-center/callback
+      - key: FRONTEND_URL
+        value: https://planning-center-chat.onrender.com
+      - key: MCP_SERVER_NAME
+        value: planning-center-mcp
+      - key: MCP_SERVER_VERSION
+        value: 1.0.0
+      - key: LOG_LEVEL
+        value: info
