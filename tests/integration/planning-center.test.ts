@@ -6,7 +6,7 @@ import { setupTestDb, teardownTestDb, createTestOrganization, createTestUser } f
 describe('Planning Center API', () => {
   let app: FastifyInstance;
   let orgId: string;
-  let userCookies: string[];
+  let userCookie: string;
 
   beforeAll(async () => {
     app = await build();
@@ -36,8 +36,18 @@ describe('Planning Center API', () => {
     });
     
     expect(loginResponse.statusCode).toBe(200);
-    userCookies = loginResponse.headers['set-cookie'] as string[];
-    expect(userCookies).toBeDefined();
+    const cookies = loginResponse.headers['set-cookie'];
+    
+    // Handle both string and array cases
+    let cookieString;
+    if (Array.isArray(cookies)) {
+      cookieString = cookies[0];
+    } else {
+      cookieString = cookies as string;
+    }
+    
+    expect(cookieString).toBeDefined();
+    userCookie = cookieString.split(';')[0];
   });
 
   test('POST /api/v1/planning-center/connect - should require admin role', async () => {
@@ -54,14 +64,24 @@ describe('Planning Center API', () => {
     });
     
     expect(memberLogin.statusCode).toBe(200);
-    const memberCookies = memberLogin.headers['set-cookie'] as string[];
-    expect(memberCookies).toBeDefined();
+    const memberCookies = memberLogin.headers['set-cookie'];
+    
+    // Handle both string and array cases
+    let memberCookieString;
+    if (Array.isArray(memberCookies)) {
+      memberCookieString = memberCookies[0];
+    } else {
+      memberCookieString = memberCookies as string;
+    }
+    
+    expect(memberCookieString).toBeDefined();
+    const memberCookie = memberCookieString.split(';')[0];
 
     const response = await app.inject({
       method: 'POST',
       url: '/api/v1/planning-center/connect',
       headers: {
-        cookie: memberCookies[0]
+        cookie: memberCookie
       },
       payload: {
         appId: 'test-app-id',
@@ -79,7 +99,7 @@ describe('Planning Center API', () => {
       method: 'GET',
       url: '/api/v1/planning-center/status',
       headers: {
-        cookie: userCookies[0]
+        cookie: userCookie
       }
     });
 
@@ -101,13 +121,24 @@ describe('Planning Center API', () => {
         organizationId: orgId
       }
     });
-    const leaderCookies = leaderLogin.headers['set-cookie'] as string[];
+    const leaderCookies = leaderLogin.headers['set-cookie'];
+    
+    // Handle both string and array cases
+    let leaderCookieString;
+    if (Array.isArray(leaderCookies)) {
+      leaderCookieString = leaderCookies[0];
+    } else {
+      leaderCookieString = leaderCookies as string;
+    }
+    
+    expect(leaderCookieString).toBeDefined();
+    const leaderCookie = leaderCookieString.split(';')[0];
 
     const response = await app.inject({
       method: 'DELETE',
       url: '/api/v1/planning-center/disconnect',
       headers: {
-        cookie: leaderCookies[0]
+        cookie: leaderCookie
       }
     });
 
@@ -121,7 +152,7 @@ describe('Planning Center API', () => {
       method: 'POST',
       url: '/api/v1/planning-center/sync',
       headers: {
-        cookie: userCookies[0]
+        cookie: userCookie
       }
     });
 

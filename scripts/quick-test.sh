@@ -174,7 +174,7 @@ npx prisma migrate deploy > /dev/null 2>&1 || {
     }
 }
 
-echo "🧪 Running auth test only..."
-npm test -- --testNamePattern="Authentication API" --verbose
+echo "🧪 Running all tests..."
+npm test --verbose
 
 echo "✅ Quick test completed!"
