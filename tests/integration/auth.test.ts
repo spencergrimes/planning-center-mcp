@@ -85,7 +85,7 @@ describe('Authentication API', () => {
   });
 
   test('GET /api/v1/auth/me - should return current user', async () => {
-    const user = await createTestUser(orgId);
+    const user = await createTestUser(orgId, 'ADMIN', 'test@example.com');
 
     // First login to get token
     const loginResponse = await app.inject({
@@ -99,6 +99,8 @@ describe('Authentication API', () => {
     });
 
     const cookies = loginResponse.headers['set-cookie'] as string[];
+    expect(cookies).toBeDefined();
+    expect(cookies.length).toBeGreaterThan(0);
 
     const response = await app.inject({
       method: 'GET',

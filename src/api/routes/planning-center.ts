@@ -14,39 +14,43 @@ export async function planningCenterRoutes(fastify: FastifyInstance) {
 
   // Helper function for inline authentication
   async function authenticateUser(request: any) {
-    const token = request.cookies.token || 
-                 request.headers.authorization?.replace('Bearer ', '');
+    try {
+      // Use Fastify JWT's built-in authentication which handles signed cookies
+      await request.jwtVerify();
+      
+      // The user info should now be in request.user from the JWT payload
+      const payload = request.user as any;
+      const userId = payload.userId;
+      const organizationId = payload.organizationId;
+      
+      // Verify user still exists and is active
+      const authUser = await fastify.prisma.user.findFirst({
+        where: {
+          id: userId,
+          organizationId: organizationId,
+          isActive: true
+        },
+        include: {
+          organization: true
+        }
+      });
 
-    if (!token) {
+      if (!authUser || !authUser.organization.isActive) {
+        throw new AppError(401, 'Invalid authentication', 'INVALID_AUTH');
+      }
+
+      // Update request.user with fresh data
+      request.user = {
+        id: authUser.id,
+        organizationId: authUser.organizationId,
+        email: authUser.email,
+        role: authUser.role
+      };
+
+      return request.user;
+    } catch (error) {
       throw new AppError(401, 'Authentication required', 'AUTH_REQUIRED');
     }
-
-    const decoded = await fastify.jwt.verify(token) as any;
-    
-    // Verify user still exists and is active
-    const authUser = await fastify.prisma.user.findFirst({
-      where: {
-        id: decoded.userId,
-        organizationId: decoded.organizationId,
-        isActive: true
-      },
-      include: {
-        organization: true
-      }
-    });
-
-    if (!authUser || !authUser.organization.isActive) {
-      throw new AppError(401, 'Invalid authentication', 'INVALID_AUTH');
-    }
-
-    request.user = {
-      id: authUser.id,
-      organizationId: authUser.organizationId,
-      email: authUser.email,
-      role: authUser.role
-    };
-
-    return request.user;
   }
 
   // Connect Planning Center (Personal Access Token method)

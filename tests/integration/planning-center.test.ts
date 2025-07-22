@@ -34,22 +34,28 @@ describe('Planning Center API', () => {
         organizationId: orgId
       }
     });
+    
+    expect(loginResponse.statusCode).toBe(200);
     userCookies = loginResponse.headers['set-cookie'] as string[];
+    expect(userCookies).toBeDefined();
   });
 
   test('POST /api/v1/planning-center/connect - should require admin role', async () => {
     // Create non-admin user
-    await createTestUser(orgId, 'MEMBER');
+    await createTestUser(orgId, 'MEMBER', 'member@example.com');
     const memberLogin = await app.inject({
       method: 'POST',
       url: '/api/v1/auth/login',
       payload: {
-        email: 'test@example.com',
+        email: 'member@example.com',
         password: 'password123',
         organizationId: orgId
       }
     });
+    
+    expect(memberLogin.statusCode).toBe(200);
     const memberCookies = memberLogin.headers['set-cookie'] as string[];
+    expect(memberCookies).toBeDefined();
 
     const response = await app.inject({
       method: 'POST',

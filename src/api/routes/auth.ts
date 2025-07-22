@@ -156,68 +156,42 @@ export async function authRoutes(fastify: FastifyInstance) {
 
   // Get current user
   fastify.get('/auth/me', async (request, reply) => {
-    // Inline authentication check
+    // Use Fastify JWT's built-in authentication
     try {
-      const token = request.cookies.token || 
-                   request.headers.authorization?.replace('Bearer ', '');
-
-      if (!token) {
-        throw new AppError(401, 'Authentication required', 'AUTH_REQUIRED');
-      }
-
-      const decoded = await fastify.jwt.verify(token) as any;
+      await request.jwtVerify();
       
-      // Verify user still exists and is active
-      const authUser = await fastify.prisma.user.findFirst({
-        where: {
-          id: decoded.userId,
-          organizationId: decoded.organizationId,
-          isActive: true
-        },
+      const payload = request.user as any;
+      const userId = payload.userId;
+      const organizationId = payload.organizationId;
+      
+      const user = await fastify.prisma.user.findUnique({
+        where: { id: userId },
         include: {
           organization: true
         }
       });
 
-      if (!authUser || !authUser.organization.isActive) {
-        throw new AppError(401, 'Invalid authentication', 'INVALID_AUTH');
+      if (!user) {
+        throw new AppError(401, 'User not found', 'USER_NOT_FOUND');
       }
 
-      request.user = {
-        id: authUser.id,
-        organizationId: authUser.organizationId,
-        email: authUser.email,
-        role: authUser.role
-      };
-
-    } catch (error) {
-      throw new AppError(401, 'Invalid authentication', 'INVALID_AUTH');
-    }
-    const user = await fastify.prisma.user.findUnique({
-      where: { id: (request.user as any).id },
-      include: {
-        organization: true
-      }
-    });
-
-    if (!user) {
-      throw new AppError(401, 'User not found', 'USER_NOT_FOUND');
-    }
-
-    return {
-      user: {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        role: user.role,
-        organization: {
-          id: user.organization.id,
-          name: user.organization.name,
-          subdomain: user.organization.subdomain
+      return {
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role,
+          organization: {
+            id: user.organization.id,
+            name: user.organization.name,
+            subdomain: user.organization.subdomain
+          }
         }
-      }
-    };
+      };
+    } catch (error) {
+      throw new AppError(401, 'Authentication required', 'AUTH_REQUIRED');
+    }
   });
 
   // Logout user
